@@ -6,7 +6,7 @@ const jsonschema = require("jsonschema");
 const express = require("express");
 
 const { BadRequestError } = require("../expressError");
-const { ensureLoggedIn } = require("../middleware/auth");
+const { ensureAdmin } = require("../middleware/auth");
 const Company = require("../models/company");
 
 const companyNewSchema = require("../schemas/companyNew.json");
@@ -24,7 +24,7 @@ const router = new express.Router();
  * Authorization required: login
  */
 
-router.post("/", ensureLoggedIn, async function (req, res, next) {
+router.post("/", ensureAdmin, async function (req, res, next) {
   try {
     const validator = jsonschema.validate(req.body, companyNewSchema);
     if (!validator.valid) {
@@ -39,25 +39,39 @@ router.post("/", ensureLoggedIn, async function (req, res, next) {
   }
 });
 
-/** GET /  =>
- *   { companies: [ { handle, name, description, numEmployees, logoUrl }, ...] }
+/** GET /companies
+ * Query params (all optional):
+ *   - name (string): case-insensitive substring match
+ *   - minEmployees (integer)
+ *   - maxEmployees (integer)
  *
- * Can filter on provided search filters:
- * - minEmployees
- * - maxEmployees
- * - nameLike (will find case-insensitive, partial matches)
+ * Returns { companies: [...] }
  *
- * Authorization required: none
+ * Throws BadRequestError if:
+ *   - Invalid query parameter
+ *   - minEmployees > maxEmployees
  */
 
-router.get("/", async function (req, res, next) {
-  try {
-    const companies = await Company.findAll();
-    return res.json({ companies });
-  } catch (err) {
-    return next(err);
-  }
-});
+  router.get("/", async function (req, res, next) {
+    try {
+      const { name, minEmployees, maxEmployees, ...invalidFields } = req.query;
+  
+      // Validate unexpected fields
+      if (Object.keys(invalidFields).length > 0) {
+        throw new BadRequestError(`Invalid query parameter(s): ${Object.keys(invalidFields).join(", ")}`);
+      }
+  
+      const filters = {};
+      if (name) filters.name = name;
+      if (minEmployees !== undefined) filters.minEmployees = +minEmployees;
+      if (maxEmployees !== undefined) filters.maxEmployees = +maxEmployees;
+  
+      const companies = await Company.findAll(filters);
+      return res.json({ companies });
+    } catch (err) {
+      return next(err);
+    }
+  });
 
 /** GET /[handle]  =>  { company }
  *
@@ -87,7 +101,7 @@ router.get("/:handle", async function (req, res, next) {
  * Authorization required: login
  */
 
-router.patch("/:handle", ensureLoggedIn, async function (req, res, next) {
+router.patch("/:handle", ensureAdmin, async function (req, res, next) {
   try {
     const validator = jsonschema.validate(req.body, companyUpdateSchema);
     if (!validator.valid) {
@@ -107,7 +121,7 @@ router.patch("/:handle", ensureLoggedIn, async function (req, res, next) {
  * Authorization: login
  */
 
-router.delete("/:handle", ensureLoggedIn, async function (req, res, next) {
+router.delete("/:handle", ensureAdmin, async function (req, res, next) {
   try {
     await Company.remove(req.params.handle);
     return res.json({ deleted: req.params.handle });

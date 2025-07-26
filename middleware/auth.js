@@ -32,18 +32,31 @@ function authenticateJWT(req, res, next) {
  *
  * If not, raises Unauthorized.
  */
-
 function ensureLoggedIn(req, res, next) {
-  try {
-    if (!res.locals.user) throw new UnauthorizedError();
-    return next();
-  } catch (err) {
-    return next(err);
-  }
+  if (!res.locals.user) throw new UnauthorizedError();
+  return next();
 }
 
+/** Middleware: Ensure user is admin. */
+function ensureAdmin(req, res, next) {
+  if (!res.locals.user || !res.locals.user.isAdmin) {
+    throw new UnauthorizedError();
+  }
+  return next();
+}
+
+/** Middleware: Ensure user is correct or admin. */
+function ensureCorrectUserOrAdmin(req, res, next) {
+  const user = res.locals.user;
+  if (!(user && (user.isAdmin || user.username === req.params.username))) {
+    throw new UnauthorizedError();
+  }
+  return next();
+}
 
 module.exports = {
   authenticateJWT,
   ensureLoggedIn,
+  ensureAdmin,
+  ensureCorrectUserOrAdmin,
 };

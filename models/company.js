@@ -44,22 +44,68 @@ class Company {
     return company;
   }
 
-  /** Find all companies.
+   /**
+   * Find all companies with optional filtering.
+   *
+   * filters (optional): { name, minEmployees, maxEmployees }
+   * - name (string): case-insensitive substring search on company name
+   * - minEmployees (number): minimum number of employees
+   * - maxEmployees (number): maximum number of employees
    *
    * Returns [{ handle, name, description, numEmployees, logoUrl }, ...]
-   * */
+   *
+   * Throws BadRequestError if minEmployees > maxEmployees
+   *
+   * Example:
+   *   Company.findAll({ name: "net", minEmployees: 10, maxEmployees: 100 });
+   *
+   * Produces SQL like:
+   *   SELECT handle, name, description, num_employees AS "numEmployees", logo_url AS "logoUrl"
+   *   FROM companies
+   *   WHERE LOWER(name) LIKE '%net%' AND num_employees >= 10 AND num_employees <= 100
+   *   ORDER BY name
+   **/
 
-  static async findAll() {
-    const companiesRes = await db.query(
-          `SELECT handle,
-                  name,
-                  description,
-                  num_employees AS "numEmployees",
-                  logo_url AS "logoUrl"
-           FROM companies
-           ORDER BY name`);
+  static async findAll(filters = {}) {
+    const { name, minEmployees, maxEmployees } = filters;
+    let query = `SELECT handle,
+                      name,
+                      description,
+                      num_employees AS "numEmployees",
+                      logo_url AS "logoUrl"
+               FROM companies`;
+    const whereParts = [];
+    const values = [];
+
+    if (minEmployees !== undefined && maxEmployees !== undefined && minEmployees > maxEmployees) {
+      throw new BadRequestError("minEmployees cannot be greater than maxEmployees");
+    }
+  
+    if (name) {
+      values.push(`%${name.toLowerCase()}%`);
+      whereParts.push(`LOWER(name) LIKE $${values.length}`);
+    }
+  
+    if (minEmployees !== undefined) {
+      values.push(minEmployees);
+      whereParts.push(`num_employees >= $${values.length}`);
+    }
+  
+    if (maxEmployees !== undefined) {
+      values.push(maxEmployees);
+      whereParts.push(`num_employees <= $${values.length}`);
+    }
+  
+    if (whereParts.length > 0) {
+      query += " WHERE " + whereParts.join(" AND ");
+    }
+  
+    query += " ORDER BY name";
+  
+    const companiesRes = await db.query(query, values);
     return companiesRes.rows;
-  }
+}
+
 
   /** Given a company handle, return data about company.
    *
