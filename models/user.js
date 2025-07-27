@@ -125,22 +125,33 @@ class User {
 
   static async get(username) {
     const userRes = await db.query(
-          `SELECT username,
-                  first_name AS "firstName",
-                  last_name AS "lastName",
-                  email,
-                  is_admin AS "isAdmin"
-           FROM users
-           WHERE username = $1`,
-        [username],
+      `SELECT username,
+              first_name AS "firstName",
+              last_name AS "lastName",
+              email,
+              is_admin AS "isAdmin"
+       FROM users
+       WHERE username = $1`,
+      [username]
     );
-
+  
     const user = userRes.rows[0];
-
+  
     if (!user) throw new NotFoundError(`No user: ${username}`);
-
+  
+    // Fetch job applications for this user
+    const jobsRes = await db.query(
+      `SELECT job_id
+       FROM applications
+       WHERE username = $1`,
+      [username]
+    );
+  
+    user.jobs = jobsRes.rows.map(r => r.job_id); 
+  
     return user;
   }
+  
 
   /** Update user data with `data`.
    *
@@ -189,6 +200,50 @@ class User {
     delete user.password;
     return user;
   }
+
+  /** Apply for job: update DB, returns undefined.
+ *
+ * - username: user applying
+ * - jobId: job to apply for
+ *
+ * Throws NotFoundError if user or job doesn't exist.
+ * Throws BadRequestError if already applied.
+ **/
+
+  static async applyToJob(username, jobId) {
+    // Check if job exists
+    const jobCheck = await db.query(
+      `SELECT id FROM jobs WHERE id = $1`,
+      [jobId]
+    );
+    if (!jobCheck.rows[0]) throw new NotFoundError(`No job: ${jobId}`);
+  
+    // Check if user exists
+    const userCheck = await db.query(
+      `SELECT username FROM users WHERE username = $1`,
+      [username]
+    );
+    if (!userCheck.rows[0]) throw new NotFoundError(`No user: ${username}`);
+  
+    // Check if already applied
+    const duplicateCheck = await db.query(
+      `SELECT username FROM applications WHERE username = $1 AND job_id = $2`,
+      [username, jobId]
+    );
+    if (duplicateCheck.rows[0]) {
+      throw new BadRequestError(`Already applied for job: ${jobId}`);
+    }
+  
+    await db.query(
+      `INSERT INTO applications (username, job_id)
+       VALUES ($1, $2)`,
+      [username, jobId]
+    );
+  
+    return jobId;
+  }
+  
+
 
   /** Delete given user from database; returns undefined. */
 

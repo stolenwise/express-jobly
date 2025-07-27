@@ -21,16 +21,17 @@ async function commonBeforeAll() {
            ('c2', 'C2', 2, 'Desc2', 'http://c2.img')`);
 
   // Insert users: one regular user, one admin
-  await db.query(
-    `INSERT INTO users (username, password, first_name, last_name, email, is_admin)
-     VALUES 
-     ('u1', $1, 'U1F', 'U1L', 'user1@user.com', FALSE),
-     ('admin', $2, 'AdminF', 'AdminL', 'admin@admin.com', TRUE)`,
-    [
-      await bcrypt.hash("password1", BCRYPT_WORK_FACTOR),
-      await bcrypt.hash("password2", BCRYPT_WORK_FACTOR),
-    ]
-  );
+  await db.query(`
+    INSERT INTO users (username, password, first_name, last_name, email, is_admin)
+    VALUES ('u1', $1, 'U1F', 'U1L', 'user1@user.com', FALSE),
+           ('u2', $2, 'U2F', 'U2L', 'user2@user.com', FALSE),
+           ('admin', $3, 'AdminF', 'AdminL', 'admin@admin.com', TRUE)`,
+[
+  await bcrypt.hash("password1", BCRYPT_WORK_FACTOR),
+  await bcrypt.hash("password2", BCRYPT_WORK_FACTOR),
+  await bcrypt.hash("adminpass", BCRYPT_WORK_FACTOR)
+]);
+
 
   // Insert jobs and capture IDs
   const resultJobs = await db.query(
