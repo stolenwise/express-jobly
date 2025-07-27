@@ -1,48 +1,48 @@
 "use strict";
 
-const db = require("../db");
-const User = require("../models/user");
-const Company = require("../models/company");
+const bcrypt = require("bcrypt");
+const db = require("../db.js");
+const { BCRYPT_WORK_FACTOR } = require("../config");
 const { createToken } = require("../helpers/tokens");
 
+let testJobIds = [];
+
 async function commonBeforeAll() {
-  await db.query("DELETE FROM users");
+  // Clear tables
+  await db.query("DELETE FROM applications");
+  await db.query("DELETE FROM jobs");
   await db.query("DELETE FROM companies");
+  await db.query("DELETE FROM users");
 
-  await Company.create({
-    handle: "c1",
-    name: "C1",
-    numEmployees: 1,
-    description: "Desc1",
-    logoUrl: "http://c1.img",
-  });
+  // Insert companies
+  await db.query(`
+    INSERT INTO companies (handle, name, num_employees, description, logo_url)
+    VALUES ('c1', 'C1', 1, 'Desc1', 'http://c1.img'),
+           ('c2', 'C2', 2, 'Desc2', 'http://c2.img')`);
 
-  await User.register({
-    username: "u1",
-    firstName: "U1F",
-    lastName: "U1L",
-    email: "user1@user.com",
-    password: "password1",
-    isAdmin: false,
-  });
+  // Insert users: one regular user, one admin
+  await db.query(
+    `INSERT INTO users (username, password, first_name, last_name, email, is_admin)
+     VALUES 
+     ('u1', $1, 'U1F', 'U1L', 'user1@user.com', FALSE),
+     ('admin', $2, 'AdminF', 'AdminL', 'admin@admin.com', TRUE)`,
+    [
+      await bcrypt.hash("password1", BCRYPT_WORK_FACTOR),
+      await bcrypt.hash("password2", BCRYPT_WORK_FACTOR),
+    ]
+  );
 
-  await User.register({
-    username: "u2",
-    firstName: "U2F",
-    lastName: "U2L",
-    email: "user2@user.com",
-    password: "password2",
-    isAdmin: false,
-  });
+  // Insert jobs and capture IDs
+  const resultJobs = await db.query(
+    `INSERT INTO jobs (title, salary, equity, company_handle)
+     VALUES 
+     ('Job1', 50000, 0.01, 'c1'),
+     ('Job2', 60000, 0, 'c1'),
+     ('Job3', 70000, 0.02, 'c2')
+     RETURNING id`
+  );
 
-  await User.register({
-    username: "admin",
-    firstName: "AdminF",
-    lastName: "AdminL",
-    email: "admin@admin.com",
-    password: "adminpass",
-    isAdmin: true,
-  });
+  testJobIds.splice(0, testJobIds.length, ...resultJobs.rows.map(r => r.id));
 }
 
 async function commonBeforeEach() {
@@ -57,8 +57,8 @@ async function commonAfterAll() {
   await db.end();
 }
 
+// Tokens
 const u1Token = createToken({ username: "u1", isAdmin: false });
-const u2Token = createToken({ username: "u2", isAdmin: false });
 const adminToken = createToken({ username: "admin", isAdmin: true });
 
 module.exports = {
@@ -66,7 +66,7 @@ module.exports = {
   commonBeforeEach,
   commonAfterEach,
   commonAfterAll,
+  testJobIds,
   u1Token,
-  u2Token,
-  adminToken,
+  adminToken
 };

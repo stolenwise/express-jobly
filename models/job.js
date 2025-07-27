@@ -43,25 +43,52 @@ class Job {
     };
   }
 
-  /** Find all jobs.
-   *
-   * Returns [{ id, title, salary, equity, companyHandle }, ...]
-   **/
-  static async findAll() {
-    const result = await db.query(
-      `SELECT id, title, salary, equity, company_handle AS "companyHandle"
-       FROM jobs
-       ORDER BY id`
-    );
-
-    return result.rows.map(j => ({
-      id: j.id,
-      title: j.title,
-      salary: Number(j.salary),
-      equity: j.equity,
-      companyHandle: j.companyHandle,
-    }));
+  /** Find all jobs with optional filters.
+ *
+ * filters: { title, minSalary, hasEquity }
+ * 
+ * Returns [{ id, title, salary, equity, companyHandle }, ...]
+ **/
+static async findAll(filters = {}) {
+    let query = `
+      SELECT id,
+             title,
+             salary,
+             equity,
+             company_handle AS "companyHandle"
+      FROM jobs`;
+    
+    const whereExpressions = [];
+    const queryValues = [];
+  
+    const { title, minSalary, hasEquity } = filters;
+  
+    // Filtering logic
+    if (title) {
+      queryValues.push(`%${title}%`);
+      whereExpressions.push(`title ILIKE $${queryValues.length}`);
+    }
+  
+    if (minSalary !== undefined) {
+      queryValues.push(minSalary);
+      whereExpressions.push(`salary >= $${queryValues.length}`);
+    }
+  
+    if (hasEquity === true) {
+      whereExpressions.push(`equity::float > 0`);
+    }
+  
+    if (whereExpressions.length > 0) {
+      query += " WHERE " + whereExpressions.join(" AND ");
+    }
+  
+    query += " ORDER BY id ASC";
+  
+    const jobsRes = await db.query(query, queryValues);
+    return jobsRes.rows;
   }
+  
+  
 
   /** Given a job id, return data about job.
    *

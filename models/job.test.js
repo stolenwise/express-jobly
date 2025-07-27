@@ -62,34 +62,34 @@ describe("create", function () {
 /************************************** findAll */
 
 describe("findAll", function () {
-  test("works", async function () {
-    const jobs = await Job.findAll();
-    expect(jobs).toEqual([
-      {
-        id: testJobIds[0],
-        title: "Job1",
-        salary: 50000,
-        equity: "0.01",
-        companyHandle: "c1",
-      },
-      {
-        id: testJobIds[1],
-        title: "Job2",
-        salary: 60000,
-        equity: "0",
-        companyHandle: "c1",
-      },
-      {
-        id: testJobIds[2],
-        title: "Job3",
-        salary: 70000,
-        equity: "0.02",
-        companyHandle: "c2",
-      },
-    ]);
+    test("works", async function () {
+      const jobs = await Job.findAll();
+      expect(jobs).toEqual([
+        {
+          id: testJobIds[0],
+          title: "Job1",
+          salary: 50000,
+          equity: "0.01",
+          companyHandle: "c1",
+        },
+        {
+          id: testJobIds[1],
+          title: "Job2",
+          salary: 60000,
+          equity: "0",
+          companyHandle: "c1",
+        },
+        {
+          id: testJobIds[2],
+          title: "Job3",
+          salary: 70000,
+          equity: "0.02",
+          companyHandle: "c2",
+        },
+      ]);
+    });
   });
-});
-
+  
 /************************************** get */
 
 describe("get", function () {

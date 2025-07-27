@@ -8,10 +8,10 @@ const Company = require("../models/company");
 let testJobIds = [];
 
 async function commonBeforeAll() {
-  await db.query("DELETE FROM companies");
   await db.query("DELETE FROM users");
+  await db.query("DELETE FROM companies");
   await db.query("DELETE FROM jobs");
-
+  
   // Insert companies
   await Company.create({ handle: "c1", name: "C1", numEmployees: 1, description: "Desc1", logoUrl: "http://c1.img" });
   await Company.create({ handle: "c2", name: "C2", numEmployees: 2, description: "Desc2", logoUrl: "http://c2.img" });
@@ -37,7 +37,8 @@ async function commonBeforeAll() {
      RETURNING id`
   );
 
-  testJobIds.splice(0, 0, ...result.rows.map(r => r.id)); // ✅ updates original array
+  testJobIds.length = 0;
+  result.rows.forEach(r => testJobIds.push(r.id));
 }
 
 async function commonBeforeEach() {
@@ -57,6 +58,5 @@ module.exports = {
   commonBeforeEach,
   commonAfterEach,
   commonAfterAll,
-  testJobIds, 
+  testJobIds,
 };
-
