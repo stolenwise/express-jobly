@@ -5,6 +5,8 @@ const { BadRequestError } = require("../expressError");
 
 /**
  * Generate SQL for partial UPDATE queries.
+ * Instead of writing dozens of conditional statements to build SQL dynamically, 
+ * sqlForPartialUpdate() automates that process.
  *
  * @param {Object} dataToUpdate - Key-value pairs of fields to update.
  * @param {Object} jsToSql - Mapping from JS-style field names to SQL column names.
