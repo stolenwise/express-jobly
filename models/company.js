@@ -77,13 +77,15 @@ class Company {
     const whereParts = [];
     const values = [];
 
+      // Validation: minEmployees cannot be greater than maxEmployees
     if (minEmployees !== undefined && maxEmployees !== undefined && minEmployees > maxEmployees) {
       throw new BadRequestError("minEmployees cannot be greater than maxEmployees");
     }
   
+      // Filtering logic
     if (name) {
-      values.push(`%${name.toLowerCase()}%`);
-      whereParts.push(`LOWER(name) LIKE $${values.length}`);
+      values.push(`%${name.toLowerCase()}%`); // ex: John becomes "john"
+      whereParts.push(`LOWER(name) LIKE $${values.length}`); // to match John, Johnny, john, JOHN, etc.
     }
   
     if (minEmployees !== undefined) {
